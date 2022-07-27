@@ -28,7 +28,8 @@
     view.frame = self.view.bounds;
     [self.view addSubview:view];
     self.view.backgroundColor = [UIColor blueColor];
-    NSString *path = [[NSBundle mainBundle] pathForResource:@"04_Aerial" ofType:@"mp4"];
+    NSString *path = [[NSBundle mainBundle] pathForResource:@"02_Skater" ofType:@"mp4"];
+//    NSString *path = [[NSBundle mainBundle] pathForResource:@"04_Aerial" ofType:@"mp4"];
     tinyPlayer_->SetVideoURL([path UTF8String]);
     if (tinyPlayer_->Open()){
         tinyPlayer_->Play();

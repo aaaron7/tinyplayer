@@ -20,8 +20,9 @@ public:
     }
     Player* player_ref;
     virtual ~AudioRender() = default;
-    virtual bool Init(){return true;};
-    virtual bool Play(){return true;};
+    virtual bool Init(){return true;}
+    virtual bool Play(){return true;}
+    virtual bool Stop(){return true;}
     
 };
 }

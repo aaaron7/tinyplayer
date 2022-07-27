@@ -18,6 +18,7 @@ class AudioUnitRender : public AudioRender{
 public:
     virtual bool Init();
     virtual bool Play();
+    virtual bool Stop();
     static OSStatus renderCallback(void* inRefCon, AudioUnitRenderActionFlags* inActionFlags,
                                                             const AudioTimeStamp* inTimeStamp, UInt32 inBusNumber,
                                    UInt32 inNumberFrames, AudioBufferList* ioData);

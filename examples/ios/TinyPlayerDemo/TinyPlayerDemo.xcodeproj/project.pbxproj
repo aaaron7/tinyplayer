@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9345CF6A2891607400FAE820 /* 02_Skater.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 9345CF6628915FB200FAE820 /* 02_Skater.mp4 */; };
 		93AD7CAC288E67E80075C402 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 93AD7CAB288E67E80075C402 /* AppDelegate.m */; };
 		93AD7CAF288E67E80075C402 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 93AD7CAE288E67E80075C402 /* SceneDelegate.m */; };
 		93AD7CB2288E67E80075C402 /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 93AD7CB1288E67E80075C402 /* ViewController.mm */; };
@@ -44,6 +45,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9345CF6628915FB200FAE820 /* 02_Skater.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = 02_Skater.mp4; sourceTree = "<group>"; };
 		93AD7CA7288E67E80075C402 /* TinyPlayerDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TinyPlayerDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		93AD7CAA288E67E80075C402 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		93AD7CAB288E67E80075C402 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -94,6 +96,7 @@
 			isa = PBXGroup;
 			children = (
 				93AD7CC3288E69640075C402 /* 04_Aerial.mp4 */,
+				9345CF6628915FB200FAE820 /* 02_Skater.mp4 */,
 				93AD7CAA288E67E80075C402 /* AppDelegate.h */,
 				93AD7CAB288E67E80075C402 /* AppDelegate.m */,
 				93AD7CAD288E67E80075C402 /* SceneDelegate.h */,
@@ -198,6 +201,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9345CF6A2891607400FAE820 /* 02_Skater.mp4 in Resources */,
 				93AD7CBA288E67EA0075C402 /* LaunchScreen.storyboard in Resources */,
 				93AD7CC4288E69640075C402 /* 04_Aerial.mp4 in Resources */,
 				93AD7CB7288E67EA0075C402 /* Assets.xcassets in Resources */,

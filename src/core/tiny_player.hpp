@@ -57,6 +57,7 @@ private:
     FramePtr current_audio_frame_ = nullptr;
     int current_audio_frame_offset_;
     
+    double current_audio_position_ = 0;
     
 private:
     void Init();

@@ -24,7 +24,7 @@ public:
     void *buf;
     uint32_t length;
     double duration;
-    
+    double position;
     DecodedFrame(){};
     virtual ~DecodedFrame() = default;
 };

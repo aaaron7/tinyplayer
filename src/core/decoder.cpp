@@ -52,7 +52,7 @@ int Decoder::Open(string file_url){
     AVFrame *frame = NULL;
     int video_index = FindVideoInfo(&codec_context);
     if (video_index >= 0 && codec_context != NULL){
-        AVStream *videoStream = format_context->streams[video_index];
+        AVStream *video_stream = format_context->streams[video_index];
         if (codec_context -> pix_fmt != AV_PIX_FMT_NONE || 1){
             frame = av_frame_alloc();
             bool is_yuv = (codec_context->pix_fmt == AV_PIX_FMT_YUV420P ||
@@ -62,8 +62,9 @@ int Decoder::Open(string file_url){
                 assert(0);
             }
 
-            fps_ = GetFPS(videoStream);
-//            _timebase = getTimeBase(videoStream);
+            fps_ = GetFPS(video_stream);
+            video_timebase_ = GetTimeBase(video_stream);
+            
         }
 
         if (frame == NULL){
@@ -82,6 +83,9 @@ int Decoder::Open(string file_url){
         if (ret < 0){
             assert(0);
         }
+        
+        AVStream *audio_stream = format_context->streams[audio_index];
+        audio_timebase_ = GetTimeBase(audio_stream);
     }
     
 
@@ -242,7 +246,7 @@ FrameVec Decoder::GetFrameFromPacket(AVPacket *packet){
         vf->height = video_codec_context_->height;
         vf->type = FrameTypeVideo;
         vf->duration = vframe_->pkt_duration>0?:1/fps_;
-        
+        vf->position = vframe_->best_effort_timestamp * video_timebase_ * 1000;
         vf->y_data = GetDataFromVideoFrame(vframe_->data[0], vframe_->linesize[0], width, height);
         vf->u_data = GetDataFromVideoFrame(vframe_->data[1], vframe_->linesize[1], width / 2, height / 2);
         vf->v_data = GetDataFromVideoFrame(vframe_->data[2], vframe_->linesize[2], width / 2, height / 2);
@@ -318,6 +322,7 @@ FrameVec Decoder::GetAudioFrameFromPacket(AVPacket *packet){
         FramePtr frame(new DecodedFrame());
         int data_length = sample_per_channel * audio_channels_ * sizeof(float);
         int elements =sample_per_channel * audio_channels_;
+        frame->position = aframe_->best_effort_timestamp * audio_timebase_ *1000;
         frame->buf = new uint8_t[audio_swr_buffer_size_];
         memcpy(frame->buf, data, audio_swr_buffer_size_);
         frame->length = audio_swr_buffer_size_;

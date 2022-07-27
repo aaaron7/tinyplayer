@@ -43,6 +43,8 @@ private:
     bool has_audio_;
     bool is_eof_;
     double fps_;
+    double video_timebase_ = 0.0;
+    double audio_timebase_ = 0.0;
     float audio_sample_rates_ = 48000;
     uint32_t audio_channels_ = 2;
     

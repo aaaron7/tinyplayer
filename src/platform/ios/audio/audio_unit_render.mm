@@ -141,6 +141,14 @@ bool AudioUnitRender::Play(){
     return playing_;
 }
 
+bool AudioUnitRender::Stop(){
+    OSStatus status = AudioOutputUnitStop(audio_unit_);
+    if (status != noErr){
+        assert(0);
+    }
+    return true;
+}
+
 OSStatus AudioUnitRender::renderCallback(void* inRefCon, AudioUnitRenderActionFlags* inActionFlags,
                                                         const AudioTimeStamp* inTimeStamp, UInt32 inBusNumber,
                                                         UInt32 inNumberFrames, AudioBufferList* ioData)

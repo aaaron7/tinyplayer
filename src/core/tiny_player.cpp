@@ -77,6 +77,7 @@ void Player::Pause(){
 
 void Player::Stop(){
     playing_ = false;
+    audio_render_->Stop();
 }
 
 
@@ -92,7 +93,6 @@ void Player::Init(){
     audio_render_ = p;
     audio_render_->Init();
     audio_render_->player_ref = this;
-//    audio_render_ = make_shared<>(<#_Args &&__args...#>)
 
 }
 
@@ -101,7 +101,6 @@ void Player::ReadThreadLoop(){
     std::cout<<"start read thread" << std::endl;
     while (playing_){
         ReadFrames();
-//        cout<<"into loop"<<endl;
         usleep(100);
     }
 }
@@ -128,7 +127,7 @@ void Player::Render(){
     bool no_frame = video_frames_.size() <= 0;
 
     if (no_frame && eof){
-        pause();
+        Stop();
         LOG1("End of files");
         return;
     }
@@ -136,17 +135,27 @@ void Player::Render(){
     if (no_frame){
         usleep(1000);
         return;
-    }else{
     }
 
     if (video_frames_.size() > 0){
         {
             lock_guard<mutex> guard(video_lock_);
             FramePtr frame = video_frames_[0];
-            video_frames_.erase(video_frames_.begin());
-            LOG1("prepare render frame");
+            
+            double diff = frame->position - current_audio_position_;
+            if(diff > 200){
+                usleep(1000);
+                return;
+            } else if (diff < -200){
+                //drop current frame
+                video_frames_.erase(video_frames_.begin());
+                return;
+            } else {
+                video_frames_.erase(video_frames_.begin());
 
-            video_render_->RenderFrame(frame);
+                video_render_->RenderFrame(frame);
+            }
+
         }
     }
 }
@@ -159,7 +168,6 @@ void Player::RenderAudioFrame(short *data, uint32_t frames, uint32_t channels){
     memset(data, 0, frames * channels * sizeof(short));
 
     while (frames > 0) {
-//        LOG1("ready to render audio frame");
         if (!current_audio_frame_){
             if (audio_frames_.size() <= 0){
                 return;
@@ -173,8 +181,6 @@ void Player::RenderAudioFrame(short *data, uint32_t frames, uint32_t channels){
                 
             }
         }else{
-//            assert(0);
-            LOG1("aaa");
         }
         
         
@@ -193,11 +199,14 @@ void Player::RenderAudioFrame(short *data, uint32_t frames, uint32_t channels){
         memcpy(data, bytes, bytes_to_copy );
         frames -= frames_to_copy;
         data += bytes_to_copy;
+        current_audio_position_ = current_audio_frame_->position;
+        
         if (bytes_to_copy < remain){
             current_audio_frame_offset_ += bytes_to_copy;
         }else{
             current_audio_frame_ = nullptr;
         }
+        
     }
 }
 
