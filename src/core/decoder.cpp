@@ -8,7 +8,6 @@
 #include "decoder.hpp"
 #include "core/utils.hpp"
 #include <iostream>
-#import <Accelerate/Accelerate.h>
 
 using namespace std;
 
@@ -285,7 +284,7 @@ FrameVec Decoder::GetAudioFrameFromPacket(AVPacket *packet){
         if (swr_context_ != NULL){
             float sample_ratio = audio_sample_rates_ / audio_codec_context_->sample_rate;
             float channel_ratio = audio_channels_ / audio_codec_context_->channels;
-            float ratio = max(1.0f, sample_ratio) * max(1.0f, channel_ratio) * 2.0;
+            float ratio = max(1.0f, sample_ratio) * max(1.0f, channel_ratio) ;
             
             int samples = aframe_->nb_samples * ratio;
             int bufsize = av_samples_get_buffer_size(NULL,
@@ -319,17 +318,18 @@ FrameVec Decoder::GetAudioFrameFromPacket(AVPacket *packet){
         FramePtr frame(new DecodedFrame());
         int data_length = sample_per_channel * audio_channels_ * sizeof(float);
         int elements =sample_per_channel * audio_channels_;
-        frame->buf = new float[elements];
-        frame->length = data_length;
+        frame->buf = new uint8_t[audio_swr_buffer_size_];
+        memcpy(frame->buf, data, audio_swr_buffer_size_);
+        frame->length = audio_swr_buffer_size_;
 //        for (int i = 0; i < elements; i++) {
-//            float jj = (float)data[i];
-//            jj = jj/INT16_MAX;
+//            float jj = (float)data[i] / INT16_MAX;
+//
 //            ((float *)frame->buf)[i] = jj;
 //        }
-        float scalar = 1.0f / INT16_MAX;
-
-        vDSP_vflt16((short *)data, 1, (float *)frame->buf, 1, elements);
-        vDSP_vsmul((float *)frame->buf, 1, &scalar, (float *)frame->buf, 1, elements);
+//        float scalar = 1.0f / INT16_MAX;
+//
+//        vDSP_vflt16((short *)data, 1, (float *)frame->buf, 1, elements);
+//        vDSP_vsmul((float *)frame->buf, 1, &scalar, (float *)frame->buf, 1, elements);
         
 
         vec.push_back(frame);

@@ -22,7 +22,7 @@ public:
                                                             const AudioTimeStamp* inTimeStamp, UInt32 inBusNumber,
                                    UInt32 inNumberFrames, AudioBufferList* ioData);
     uint32_t channels_per_frame_;
-    float *buffer_;
+    short *buffer_;
 
 
 private:

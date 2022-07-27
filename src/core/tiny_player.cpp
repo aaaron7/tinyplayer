@@ -151,17 +151,17 @@ void Player::Render(){
     }
 }
 
-void Player::RenderAudioFrame(float *data, uint32_t frames, uint32_t channels){
+void Player::RenderAudioFrame(short *data, uint32_t frames, uint32_t channels){
     if (!playing_){
         return;
     }
     
-    
+    memset(data, 0, frames * channels * sizeof(short));
+
     while (frames > 0) {
 //        LOG1("ready to render audio frame");
         if (!current_audio_frame_){
             if (audio_frames_.size() <= 0){
-                memset(data, 0, frames * channels * sizeof(float));
                 return;
             }
             
@@ -173,25 +173,26 @@ void Player::RenderAudioFrame(float *data, uint32_t frames, uint32_t channels){
                 
             }
         }else{
-            assert(0);
+//            assert(0);
+            LOG1("aaa");
         }
         
         
         int pos = current_audio_frame_offset_;
         if (current_audio_frame_->buf == NULL){
-            memset(data, 0, frames * channels * sizeof(float));
+            memset(data, 0, frames * channels * sizeof(short));
             return ;
         }
 
         void *bytes = (uint8_t *)current_audio_frame_->buf + pos;
         uint32_t remain = current_audio_frame_->length - pos;
-        uint32_t channel_size = channels * sizeof(float);
+        uint32_t channel_size = channels * sizeof(short);
         uint32_t bytes_to_copy = min(frames * channel_size, remain);
         uint32_t frames_to_copy = bytes_to_copy / channel_size;
 
-        memcpy(data, bytes, bytes_to_copy);
+        memcpy(data, bytes, bytes_to_copy );
         frames -= frames_to_copy;
-//        data += frames_to_copy * channels;
+        data += bytes_to_copy;
         if (bytes_to_copy < remain){
             current_audio_frame_offset_ += bytes_to_copy;
         }else{

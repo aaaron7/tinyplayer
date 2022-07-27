@@ -31,7 +31,7 @@ public:
     
     PlayerViewPlatform *GetPlayerView();
     
-    void RenderAudioFrame(float *data, uint32_t frames, uint32_t channels);
+    void RenderAudioFrame(short *data, uint32_t frames, uint32_t channels);
 
 private:
     std::string file_url_;

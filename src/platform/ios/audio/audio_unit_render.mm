@@ -19,7 +19,7 @@ AudioRender *CreateAudioRender(){
 bool AudioUnitRender::Init(){
     
     
-    buffer_ = (float *)calloc(4096 * 2, sizeof(float));
+    buffer_ = (short *)calloc(4096 * 2, sizeof(float));
     
     AVAudioSession *session = [AVAudioSession sharedInstance];
     NSError *rawError = nil;
@@ -67,6 +67,25 @@ bool AudioUnitRender::Init(){
         return NO;
     }
     
+
+    
+    AudioStreamBasicDescription _clientFormat16int;
+    UInt32 bytesPerSample = sizeof (SInt16);
+    bzero(&_clientFormat16int, sizeof(_clientFormat16int));
+    _clientFormat16int.mFormatID          = kAudioFormatLinearPCM;
+    _clientFormat16int.mFormatFlags       = kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked;
+    _clientFormat16int.mBytesPerPacket    = bytesPerSample * channels;
+    _clientFormat16int.mFramesPerPacket   = 1;
+    _clientFormat16int.mBytesPerFrame     = bytesPerSample * channels;
+    _clientFormat16int.mChannelsPerFrame  = channels;
+    _clientFormat16int.mBitsPerChannel    = 8 * bytesPerSample;
+    _clientFormat16int.mSampleRate        = 48000;
+    
+    status = AudioUnitSetProperty(audiounit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &_clientFormat16int, sizeof(_clientFormat16int));
+    if(status != noErr){
+        assert(0);
+    }
+    
     AudioStreamBasicDescription streamDescr = {0};
     UInt32 size = sizeof(AudioStreamBasicDescription);
     status = AudioUnitGetProperty(audiounit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input,
@@ -76,6 +95,7 @@ bool AudioUnitRender::Init(){
 
         return NO;
     }
+    
     
     streamDescr.mSampleRate = sampleRate;
     status = AudioUnitSetProperty(audiounit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input,
@@ -139,16 +159,15 @@ OSStatus AudioUnitRender::renderCallback(void* inRefCon, AudioUnitRenderActionFl
     for (int i = 0 ; i< ioData->mNumberBuffers ; i++){
         AudioBuffer buf = ioData->mBuffers[i];
         uint32_t channels = buf.mNumberChannels;
-        float scalar = 0;
-
-        for (int j = 0;j<channels; ++j){
-
-
-            vDSP_vsadd((float *)render->buffer_ + i + j, render->channels_per_frame_, &scalar, (float *)buf.mData + j, channels, inNumberFrames);
-//            for (int k = 0; k < inNumberFrames;k++){
-//                LOG("data: %",(float)*((float*)buf.mData + j + k));
-//            }
-        }
+        memcpy(buf.mData, render->buffer_, buf.mDataByteSize);
+//        float scalar = 0;
+//
+//        for (int j = 0;j<channels; ++j){
+//
+//
+//            vDSP_vsadd((float *)render->buffer_ + i + j, render->channels_per_frame_, &scalar, (float *)buf.mData + j, channels, inNumberFrames);
+//
+//        }
     }
     return noErr;
 }
