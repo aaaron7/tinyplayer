@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.4.1)
 set(CMAKE_CXX_STANDARD 11)
 set(DEVELOPMENT_TEAM_ID GH246XP5QK)
 FILE(GLOB SRC_FILES ${CMAKE_SOURCE_DIR}/core/*.*)
-FILE(GLOB PLATFORM_FILES ${CMAKE_SOURCE_DIR}/platform/ios/egl/*.*)
+FILE(GLOB PLATFORM_FILES ${CMAKE_SOURCE_DIR}/platform/ios/**/*.*)
 set(MOBILE_PLATFORM ON)
 
 set(DEVICE_FAMILY "1")
@@ -34,6 +34,8 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/../libs/include/
     ${CMAKE_SOURCE_DIR}/
     ${CMAKE_SOURCE_DIR}/platform/ios/egl/
+    ${CMAKE_SOURCE_DIR}/platform/ios/audio/
+
 )
 
 link_directories(
@@ -51,11 +53,13 @@ ADD_FRAMEWORK(tinyplayer CoreMedia)
 ADD_FRAMEWORK(tinyplayer CoreVideo)
 ADD_FRAMEWORK(tinyplayer CoreFoundation)
 ADD_FRAMEWORK(tinyplayer Security)
+ADD_FRAMEWORK(tinyplayer AVFoundation)
 ADD_FRAMEWORK(tinyplayer AudioToolBox)
 ADD_FRAMEWORK(tinyplayer OpenGLES)
 ADD_FRAMEWORK(tinyplayer UIKit)
 ADD_FRAMEWORK(tinyplayer QuartzCore)
 ADD_FRAMEWORK(tinyplayer Foundation)
+ADD_FRAMEWORK(tinyplayer Accelerate)
 link_libraries(avformat avcodec)
 target_link_libraries(tinyplayer
 "-Wl" 

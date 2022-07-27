@@ -8,6 +8,8 @@
 #include "decoder.hpp"
 #include "core/utils.hpp"
 #include <iostream>
+#import <Accelerate/Accelerate.h>
+
 using namespace std;
 
 static int ib(void *context){
@@ -74,15 +76,26 @@ int Decoder::Open(string file_url){
 
 
     //ToDO: Find audio
+    int audio_index = FindAudioInfo(&audio_codec_context_);
+    if (audio_index >=0 && audio_codec_context_ != NULL){
+        swr_context_ = swr_alloc_set_opts(NULL, av_get_default_channel_layout(audio_channels_), AV_SAMPLE_FMT_S16, audio_sample_rates_, av_get_default_channel_layout(audio_codec_context_->channels), audio_codec_context_->sample_fmt, audio_codec_context_->sample_rate, 0, NULL);
+        int ret = swr_init(swr_context_);
+        if (ret < 0){
+            assert(0);
+        }
+    }
+    
 
     if (video_index < 0) {
         avformat_close_input(&format_context);
         return -3;
     }
 
-    avframe_ = frame;
+    vframe_ = frame;
+    aframe_ = av_frame_alloc();
     video_index_ = video_index;
-    codec_context_ = codec_context;
+    audio_index = audio_index;
+    video_codec_context_ = codec_context;
 
     AVIOInterruptCB icb = {ib, NULL};
     format_context->interrupt_callback = icb;
@@ -97,7 +110,24 @@ int Decoder::FindVideoInfo(AVCodecContext **codec_context){
     int index = -1;
     for (int i = 0; i < format_context_->nb_streams; i++){
         if (format_context_->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO){
-            AVCodecContext *codecctx = FindVideoCodec(i);
+            AVCodecContext *codecctx = FindCodec(i);
+            if (codecctx != NULL){
+                if (codec_context != NULL){
+                    *codec_context = codecctx;
+                    index = i;
+                    break;
+                }
+            }
+        }
+    }
+    return index;
+}
+
+int Decoder::FindAudioInfo(AVCodecContext **codec_context){
+    int index = -1;
+    for (int i = 0; i < format_context_->nb_streams; i++){
+        if (format_context_->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO){
+            AVCodecContext *codecctx = FindCodec(i);
             if (codecctx != NULL){
                 if (codec_context != NULL){
                     *codec_context = codecctx;
@@ -111,8 +141,7 @@ int Decoder::FindVideoInfo(AVCodecContext **codec_context){
 }
 
 
-
-AVCodecContext* Decoder::FindVideoCodec(int stream_index){
+AVCodecContext* Decoder::FindCodec(int stream_index){
     AVCodecParameters *params = format_context_->streams[stream_index]->codecpar;
     AVCodec *codec = avcodec_find_decoder(params->codec_id);
     if (codec == NULL){
@@ -140,7 +169,8 @@ AVCodecContext* Decoder::FindVideoCodec(int stream_index){
 
 }
 
-void Decoder::ReadNewFrames(FrameVec &result){
+
+void Decoder::ReadNewFrames(FrameVec &result,FrameType *type){
     AVPacket packet;
     av_init_packet(&packet);
 
@@ -160,6 +190,12 @@ void Decoder::ReadNewFrames(FrameVec &result){
         if (packet.stream_index == video_index_){
             frames = GetFrameFromPacket(&packet);
             isReading = false;
+            *type = FrameTypeVideo;
+        }else{
+            LOG1("get audio packets");
+            frames = GetAudioFrameFromPacket(&packet);
+            isReading = false;
+            *type = FrameTypeAudio;
         }
 
         if (frames.size() > 0){
@@ -174,19 +210,19 @@ void Decoder::ReadNewFrames(FrameVec &result){
 
 FrameVec Decoder::GetFrameFromPacket(AVPacket *packet){
     FrameVec vec;
-    if (!codec_context_){
+    if (!video_codec_context_){
         assert(0);
         return vec;
     }
     
-    int ret = avcodec_send_packet(codec_context_, packet);
+    int ret = avcodec_send_packet(video_codec_context_, packet);
     if (ret != 0){
         LOG("avcodec send packet: %", ret);
         return vec;
     }
     
     do{
-        ret = avcodec_receive_frame(codec_context_, avframe_);
+        ret = avcodec_receive_frame(video_codec_context_, vframe_);
         if (ret == AVERROR_EOF){
             LOG1("AVEOF");
             break;
@@ -198,19 +234,19 @@ FrameVec Decoder::GetFrameFromPacket(AVPacket *packet){
             break;
         }
         
-        int width = codec_context_ ->width;
-        int height = codec_context_ ->height;
+        int width = video_codec_context_ ->width;
+        int height = video_codec_context_ ->height;
         
         FramePtr frame(new DecodedVideoFrame());
         VideoFramePtr vf = dynamic_pointer_cast<DecodedVideoFrame>(frame);
-        vf->width = codec_context_->width;
-        vf->height = codec_context_->height;
+        vf->width = video_codec_context_->width;
+        vf->height = video_codec_context_->height;
         vf->type = FrameTypeVideo;
-        vf->duration = avframe_->pkt_duration>0?:1/fps_;
+        vf->duration = vframe_->pkt_duration>0?:1/fps_;
         
-        vf->y_data = GetDataFromVideoFrame(avframe_->data[0], avframe_->linesize[0], width, height);
-        vf->u_data = GetDataFromVideoFrame(avframe_->data[1], avframe_->linesize[1], width / 2, height / 2);
-        vf->v_data = GetDataFromVideoFrame(avframe_->data[2], avframe_->linesize[2], width / 2, height / 2);
+        vf->y_data = GetDataFromVideoFrame(vframe_->data[0], vframe_->linesize[0], width, height);
+        vf->u_data = GetDataFromVideoFrame(vframe_->data[1], vframe_->linesize[1], width / 2, height / 2);
+        vf->v_data = GetDataFromVideoFrame(vframe_->data[2], vframe_->linesize[2], width / 2, height / 2);
         
         
         vec.push_back(frame);
@@ -220,12 +256,96 @@ FrameVec Decoder::GetFrameFromPacket(AVPacket *packet){
     return vec;
 }
 
+
+FrameVec Decoder::GetAudioFrameFromPacket(AVPacket *packet){
+    FrameVec vec;
+    if (!audio_codec_context_){
+        assert(0);
+    }
+    int ret = avcodec_send_packet(audio_codec_context_, packet);
+    if (ret != 0){
+        LOG("decoder error: %", ret);
+    }
+    
+    do {
+        ret =avcodec_receive_frame(audio_codec_context_, aframe_);
+        if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)){
+            break;
+        }else if (ret < 0){
+            LOG("receive frame: %", ret);
+            break;
+        }
+        
+        if (aframe_->data[0] == NULL){
+            continue;;
+        }
+        
+        uint8_t *data = NULL;
+        int sample_per_channel =0;
+        if (swr_context_ != NULL){
+            float sample_ratio = audio_sample_rates_ / audio_codec_context_->sample_rate;
+            float channel_ratio = audio_channels_ / audio_codec_context_->channels;
+            float ratio = max(1.0f, sample_ratio) * max(1.0f, channel_ratio) * 2.0;
+            
+            int samples = aframe_->nb_samples * ratio;
+            int bufsize = av_samples_get_buffer_size(NULL,
+                                                     audio_channels_,
+                                                     samples,
+                                                     AV_SAMPLE_FMT_S16,
+                                                     1);
+            if (audio_swr_buffer_ == NULL || audio_swr_buffer_size_ < bufsize) {
+                audio_swr_buffer_size_ = bufsize;
+                audio_swr_buffer_ = realloc(audio_swr_buffer_, bufsize);
+            }
+            
+            uint8_t *o[2] = { (uint8_t*)audio_swr_buffer_, 0 };
+            sample_per_channel = swr_convert(swr_context_, o, samples, (const uint8_t **)aframe_->data, aframe_->nb_samples);
+            if (sample_per_channel < 0) {
+                LOG1("resample failed");
+                return vec;
+            }
+            
+            data = (uint8_t *)audio_swr_buffer_;
+        }else{
+            if (audio_codec_context_->sample_fmt != AV_SAMPLE_FMT_S16){
+                assert(0);
+                return vec;
+            }
+            
+            data = aframe_->data[0];
+            sample_per_channel = aframe_->nb_samples;
+        }
+        
+        FramePtr frame(new DecodedFrame());
+        int data_length = sample_per_channel * audio_channels_ * sizeof(float);
+        int elements =sample_per_channel * audio_channels_;
+        frame->buf = new float[elements];
+        frame->length = data_length;
+//        for (int i = 0; i < elements; i++) {
+//            float jj = (float)data[i];
+//            jj = jj/INT16_MAX;
+//            ((float *)frame->buf)[i] = jj;
+//        }
+        float scalar = 1.0f / INT16_MAX;
+
+        vDSP_vflt16((short *)data, 1, (float *)frame->buf, 1, elements);
+        vDSP_vsmul((float *)frame->buf, 1, &scalar, (float *)frame->buf, 1, elements);
+        
+
+        vec.push_back(frame);
+//        frame->duration = aframe_->pkt_duration *
+        
+    } while (true);
+    return vec;
+    
+}
+
 int Decoder::GetVideoWidth(){
-    if (codec_context_ == NULL){
+    if (video_codec_context_ == NULL){
         return 0;
     }
-    int width = codec_context_->width;
-    AVRational sar = codec_context_->sample_aspect_ratio;
+    int width = video_codec_context_->width;
+    AVRational sar = video_codec_context_->sample_aspect_ratio;
     if (sar.num != 0 && sar.den != 0){
         width = width * sar.num / sar.den;
     }
@@ -234,12 +354,12 @@ int Decoder::GetVideoWidth(){
 }
 
 int Decoder::GetVideoHeight(){
-    if (codec_context_ == NULL){
+    if (video_codec_context_ == NULL){
         return 0;
     }
 
 
-    int height = codec_context_->height;
+    int height = video_codec_context_->height;
     return height;
 }
 

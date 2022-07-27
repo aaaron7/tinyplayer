@@ -22,6 +22,7 @@ class DecodedFrame{
 public:
     FrameType type;
     void *buf;
+    uint32_t length;
     double duration;
     
     DecodedFrame(){};
@@ -38,5 +39,7 @@ public:
     unique_ptr<uint8_t[]> v_data;
     
 };
+
+
 }
 #endif /* frame_hpp */

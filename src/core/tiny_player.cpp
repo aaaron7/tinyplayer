@@ -65,7 +65,7 @@ void Player::Play(){
     if (video_reader_thread_ || video_render_thread_){
         ReleaseThread();
     }
-
+    audio_render_->Play();
     video_reader_thread_ = unique_ptr<std::thread>(new std::thread(&Player::ReadThreadLoop, this));
     video_render_thread_ = unique_ptr<std::thread>(new std::thread(&Player::RenderThreadLoop, this));
 //    renderThread();
@@ -87,6 +87,12 @@ void Player::Init(){
     player_view_->Setup();
 
     video_render_ = std::make_shared<VideoRender>(player_view_);
+    AudioRender *render = CreateAudioRender();
+    std::shared_ptr<AudioRender> p(render);
+    audio_render_ = p;
+    audio_render_->Init();
+    audio_render_->player_ref = this;
+//    audio_render_ = make_shared<>(<#_Args &&__args...#>)
 
 }
 
@@ -142,35 +148,71 @@ void Player::Render(){
 
             video_render_->RenderFrame(frame);
         }
-//        countFPS();
+    }
+}
+
+void Player::RenderAudioFrame(float *data, uint32_t frames, uint32_t channels){
+    if (!playing_){
+        return;
+    }
+    
+    
+    while (frames > 0) {
+//        LOG1("ready to render audio frame");
+        if (!current_audio_frame_){
+            if (audio_frames_.size() <= 0){
+                memset(data, 0, frames * channels * sizeof(float));
+                return;
+            }
+            
+            {
+                lock_guard<mutex> guard(audio_lock_);
+                current_audio_frame_ = audio_frames_[0];
+                current_audio_frame_offset_ = 0;
+                audio_frames_.erase(audio_frames_.begin());
+                
+            }
+        }else{
+            assert(0);
+        }
+        
+        
+        int pos = current_audio_frame_offset_;
+        if (current_audio_frame_->buf == NULL){
+            memset(data, 0, frames * channels * sizeof(float));
+            return ;
+        }
+
+        void *bytes = (uint8_t *)current_audio_frame_->buf + pos;
+        uint32_t remain = current_audio_frame_->length - pos;
+        uint32_t channel_size = channels * sizeof(float);
+        uint32_t bytes_to_copy = min(frames * channel_size, remain);
+        uint32_t frames_to_copy = bytes_to_copy / channel_size;
+
+        memcpy(data, bytes, bytes_to_copy);
+        frames -= frames_to_copy;
+//        data += frames_to_copy * channels;
+        if (bytes_to_copy < remain){
+            current_audio_frame_offset_ += bytes_to_copy;
+        }else{
+            current_audio_frame_ = nullptr;
+        }
     }
 }
 
 void Player::CountFPS(){
     ++frame_count_;
-//    unsigned int curTime = NKM::getCurrentTimeStamp();
-//    if (_lastTimeStamp > 0.1){
-//        float passed = curTime - _lastTimeStamp;
-//        if (passed > 1000){
-//            passed /= 1000;
-//            float fps = _frameCount / passed;
-//            LOG("FPS: %", fps);
-//            _lastTimeStamp = curTime;
-//            _frameCount = 0;
-//        }
-//    }else{
-//        _lastTimeStamp = curTime;
-//    }
+
 }
 
 void Player::ReadFrames(){
-//    _buffering = true;
     
     double tmp_duration;
     FrameVec tmp_frame_vec;
     while(playing_ && !decoder_->isEOF()){
         FrameVec fs;
-        decoder_->ReadNewFrames(fs);
+        FrameType type;
+        decoder_->ReadNewFrames(fs, &type);
         if (fs.size() <= 0 ){
             LOG1("Get empty frame from decoder");
             continue;
@@ -179,23 +221,22 @@ void Player::ReadFrames(){
         }
 
         for_each(fs.begin(), fs.end(), [&](FramePtr& ptr){
-            if (ptr->type == FrameTypeVideo){
-                tmp_duration += ptr->duration;
-                tmp_frame_vec.push_back(ptr);
-            }else{
-                LOG1("non-video frame found");
-            }
+            tmp_duration += ptr->duration;
+            tmp_frame_vec.push_back(ptr);
         });
         fs.clear();
 
         {
-            lock_guard<mutex> guard(video_lock_);
-//            _bufferDuration += tmpDuration;
-//            tmpDuration = 0;
-            video_frames_.insert(video_frames_.end(), tmp_frame_vec.begin(), tmp_frame_vec.end());
+            if (type == FrameTypeVideo){
+                lock_guard<mutex> guard(video_lock_);
+
+                video_frames_.insert(video_frames_.end(), tmp_frame_vec.begin(), tmp_frame_vec.end());
+            } else {
+                lock_guard<mutex> guard(audio_lock_);
+                audio_frames_.insert(audio_frames_.end(), tmp_frame_vec.begin(), tmp_frame_vec.end());
+            }
             tmp_frame_vec.clear();
         }
     }
 
-//    _buffering = false;
 }

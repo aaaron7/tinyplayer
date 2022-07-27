@@ -11,16 +11,16 @@
 #include <thread>
 #include <stdio.h>
 #include "core/player_view.hpp"
-#include "core/decoder.hpp"
 #include "core/platform.hpp"
 #include "core/video_render.hpp"
+#include "core/audio_render.hpp"
 using namespace std;
 namespace tinyplayer{
+class Decoder;
 class Player{
 public:
     Player();
     ~Player();
-//    NKMPlayerError lastError;
 
     void SetVideoURL(std::string file_url);
 
@@ -31,6 +31,7 @@ public:
     
     PlayerViewPlatform *GetPlayerView();
     
+    void RenderAudioFrame(float *data, uint32_t frames, uint32_t channels);
 
 private:
     std::string file_url_;
@@ -39,16 +40,22 @@ private:
     unique_ptr<std::thread> video_render_thread_;
     shared_ptr<PlayerViewPlatform> player_view_;
     shared_ptr<VideoRender> video_render_;
+    shared_ptr<AudioRender> audio_render_;
     double buffer_duration_;
     FrameVec video_frames_;
+    FrameVec audio_frames_;
     double last_timestamp_ = 0;
     int frame_count_ = 0;
 
     mutex video_lock_;
+    mutex audio_lock_;
 
     bool opened_ = false;
     bool playing_ = false;
     bool buffering_ = false;
+    
+    FramePtr current_audio_frame_ = nullptr;
+    int current_audio_frame_offset_;
     
     
 private:
