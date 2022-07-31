@@ -191,7 +191,7 @@ void Decoder::ReadNewFrames(FrameVec &result,FrameType *type){
 
         FrameVec frames;
         if (packet.stream_index == video_index_){
-            frames = GetFrameFromPacket(&packet);
+            frames = GetVideoFrameFromPacket(&packet);
             isReading = false;
             *type = FrameTypeVideo;
         }else{
@@ -211,7 +211,7 @@ void Decoder::ReadNewFrames(FrameVec &result,FrameType *type){
     
 }
 
-FrameVec Decoder::GetFrameFromPacket(AVPacket *packet){
+FrameVec Decoder::GetVideoFrameFromPacket(AVPacket *packet){
     FrameVec vec;
     if (!video_codec_context_){
         assert(0);

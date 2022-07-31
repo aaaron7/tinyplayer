@@ -53,7 +53,7 @@ private:
     int FindVideoInfo(AVCodecContext **codec_context);
     int FindAudioInfo(AVCodecContext **codec_context);
     AVCodecContext* FindCodec(int stream_index);
-    FrameVec GetFrameFromPacket(AVPacket *packet);
+    FrameVec GetVideoFrameFromPacket(AVPacket *packet);
     FrameVec GetAudioFrameFromPacket(AVPacket *packet);
     double GetFPS(AVStream *stream);
     double GetTimeBase(AVStream *stream);

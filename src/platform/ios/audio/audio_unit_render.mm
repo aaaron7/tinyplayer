@@ -168,14 +168,6 @@ OSStatus AudioUnitRender::renderCallback(void* inRefCon, AudioUnitRenderActionFl
         AudioBuffer buf = ioData->mBuffers[i];
         uint32_t channels = buf.mNumberChannels;
         memcpy(buf.mData, render->buffer_, buf.mDataByteSize);
-//        float scalar = 0;
-//
-//        for (int j = 0;j<channels; ++j){
-//
-//
-//            vDSP_vsadd((float *)render->buffer_ + i + j, render->channels_per_frame_, &scalar, (float *)buf.mData + j, channels, inNumberFrames);
-//
-//        }
     }
     return noErr;
 }
